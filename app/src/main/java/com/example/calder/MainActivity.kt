@@ -33,7 +33,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val frameDelay = 16L // 16ms. for 60 FPS
         private const val canvasFillRatio = 0.8f
-        private val complexityRange = (1..10)
+        private val complexityRange = (3..10)
         private const val defaultComplexity = 5
     }
 
