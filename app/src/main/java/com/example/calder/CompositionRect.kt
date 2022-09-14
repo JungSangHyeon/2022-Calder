@@ -15,8 +15,18 @@ class CompositionRect(
     )
 
     private val rectPaint = Paint().apply {
-        color = Color.valueOf(getRandomColorValue(), getRandomColorValue(), getRandomColorValue()).toArgb()
-        xfermode = PorterDuffXfermode(PorterDuff.Mode.LIGHTEN)
+        color = listOf( // Mondrian's color set
+            Color.rgb(228, 55, 50),
+            Color.rgb(53, 122, 190),
+            Color.rgb(255, 255, 84),
+            Color.WHITE
+        ).random()
+        strokeWidth = 10f
+    }
+    private val borderPaint = Paint().apply {
+        color = Color.BLACK
+        style = Paint.Style.STROKE
+        this.strokeWidth = 10f
     }
 
     private val animateValueRangeAbsolute = (10..50).random()
@@ -33,10 +43,9 @@ class CompositionRect(
 
     fun draw(canvas: Canvas) {
         canvas.run {
-            drawRect(
-                getDrawRect(),
-                rectPaint
-            )
+            val rect = getDrawRect()
+            drawRect(rect, rectPaint)
+            drawRect(rect, borderPaint)
         }
     }
 
@@ -46,6 +55,4 @@ class CompositionRect(
         CompositionRectType.BOTTOM -> RectF(0f, anchorPoint.y - animateValue, parentRect.width(), parentRect.height())
         CompositionRectType.LEFT -> RectF(0f, 0f, anchorPoint.x + animateValue, parentRect.height())
     }
-
-    private fun getRandomColorValue() = (0 until 255).random().toFloat()
 }

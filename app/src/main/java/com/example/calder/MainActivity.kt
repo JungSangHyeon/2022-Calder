@@ -23,7 +23,7 @@ class MainActivity : ComponentActivity() {
     companion object {
         private const val frameDelay = 16L // 16ms. for 60 FPS
 
-        private const val complexity = 4
+        private const val complexity = 5
         private const val canvasFillRatio = 0.8f
     }
 
@@ -66,9 +66,10 @@ class MainActivity : ComponentActivity() {
 
     private fun init(size: IntSize) {
         val adjustedSize = size.width.coerceAtMost(size.height) * canvasFillRatio
+        val bitmapSize = RectF(0f, 0f, adjustedSize, adjustedSize)
 
         val compositionRectArray = (0..complexity).map {
-            CompositionRect(RectF(0f, 0f, adjustedSize, adjustedSize))
+            CompositionRect(bitmapSize)
         }
 
         lifecycleScope.launch {
@@ -83,6 +84,14 @@ class MainActivity : ComponentActivity() {
                         it.applyTime()
                         it.draw(this)
                     }
+                    this.drawRect(
+                        bitmapSize,
+                        Paint().apply {
+                            style = Paint.Style.STROKE
+                            color = Color.BLACK
+                            strokeWidth = 10f
+                        }
+                    )
                 }
                 compositionBitmap.value = temp
 
