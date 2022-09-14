@@ -7,12 +7,21 @@ class CompositionRect(
 ) {
     enum class CompositionRectType { TOP, RIGHT, BOTTOM, LEFT }
 
-    private val compositionRectType = CompositionRectType.values().random()
-
     private val anchorPoint = Point(
         (0 until parentRect.width().toInt()).random(),
         (0 until parentRect.height().toInt()).random(),
     )
+
+    private val compositionRectType = run{
+        val temp = CompositionRectType.values().random()
+        when{
+            anchorPoint.x > parentRect.width()/2 && temp == CompositionRectType.LEFT -> CompositionRectType.RIGHT
+            anchorPoint.x < parentRect.width()/2 && temp == CompositionRectType.RIGHT -> CompositionRectType.LEFT
+            anchorPoint.y < parentRect.height()/2 && temp == CompositionRectType.BOTTOM -> CompositionRectType.TOP
+            anchorPoint.y > parentRect.height()/2 && temp == CompositionRectType.TOP -> CompositionRectType.BOTTOM
+            else -> temp
+        }
+    }
 
     private val rectPaint = Paint().apply {
         color = listOf( // Mondrian's color set
