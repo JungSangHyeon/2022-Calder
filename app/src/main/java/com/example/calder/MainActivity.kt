@@ -1,19 +1,18 @@
 package com.example.calder
 
-import android.R.attr.bitmap
 import android.graphics.*
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntSize
-import androidx.core.graphics.get
 import androidx.lifecycle.lifecycleScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -21,17 +20,64 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
+    companion object {
+        private const val frameDelay = 16L // 16ms. for 60 FPS
+
+        private const val complexity = 4
+        private const val canvasFillRatio = 0.8f
+    }
+
     private var canvasSize = mutableStateOf<IntSize?>(null)
     private var compositionBitmap = mutableStateOf<Bitmap?>(null)
+    private var firstInit = true
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val compositionRectArray = (0 .. 4).map { CompositionRect( RectF(0f, 0f, 1000f, 1000f)) }
+        setContent {
+            LaunchedEffect(canvasSize.value) {
+                canvasSize.value?.let { size ->
+                    if (firstInit) {
+                        firstInit = false
+                        init(size)
+                    }
+                }
+            }
 
-        lifecycleScope.launch{
-            while (true){
-                val temp = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
+            Canvas(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .onGloballyPositioned {
+                        canvasSize.value = it.size
+                    }
+            ) {
+                compositionBitmap.value?.let {
+                    drawImage(
+                        image = it.asImageBitmap(),
+                        topLeft = Offset(
+                            center.x - it.width / 2,
+                            center.y - it.height / 2
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    private fun init(size: IntSize) {
+        val adjustedSize = size.width.coerceAtMost(size.height) * canvasFillRatio
+
+        val compositionRectArray = (0..complexity).map {
+            CompositionRect(RectF(0f, 0f, adjustedSize, adjustedSize))
+        }
+
+        lifecycleScope.launch {
+            while (true) {
+                val temp = Bitmap.createBitmap(
+                    adjustedSize.toInt(),
+                    adjustedSize.toInt(),
+                    Bitmap.Config.ARGB_8888
+                )
                 Canvas(temp).run {
                     compositionRectArray.forEach {
                         it.applyTime()
@@ -40,77 +86,8 @@ class MainActivity : ComponentActivity() {
                 }
                 compositionBitmap.value = temp
 
-                delay(16)
-            }
-        }
-
-        setContent {
-            Canvas(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .onGloballyPositioned {
-                        canvasSize.value = it.size
-                    }
-            ){
-                compositionBitmap.value?.let {
-                    drawImage(
-                        image = it.asImageBitmap(),
-                        topLeft = Offset(
-                            center.x - it.width/2,
-                            center.y - it.height/2
-                        )
-                    )
-                }
+                delay(frameDelay)
             }
         }
     }
-}
-
-class CompositionRect(
-    val parentRect: RectF
-){
-    enum class CompositionRectType{
-        TOP, RIGHT, BOTTOM, LEFT
-    }
-
-    private val compositionRectType = CompositionRectType.values().random()
-    private val anchorPoint = Point(
-        (0 until parentRect.width().toInt()).random(),
-        (0 until parentRect.height().toInt()).random(),
-    )
-    private fun defaultRect() = when(compositionRectType){
-        CompositionRectType.TOP -> RectF(0f, 0f, parentRect.width(), anchorPoint.y + animateValue)
-        CompositionRectType.RIGHT -> RectF(anchorPoint.x - animateValue, 0f, parentRect.width(), parentRect.height())
-        CompositionRectType.BOTTOM -> RectF(0f, anchorPoint.y-animateValue, parentRect.width(), parentRect.height())
-        CompositionRectType.LEFT -> RectF(0f, 0f, anchorPoint.x+animateValue, parentRect.height())
-    }
-    private val rectColor = Color.valueOf(
-        getRandomColorValue(), getRandomColorValue(), getRandomColorValue()
-    ).toArgb()
-
-    private val absolute = (10..50).random()
-    private val animateValueRange = (-absolute .. absolute)
-    private var animateValueDiff = (-10..10).random()/10f
-    private var animateValue = 0f
-
-    fun applyTime() {
-        animateValue += animateValueDiff
-        if(!animateValueRange.contains(animateValue.toInt())){
-            animateValueDiff *= -1
-        }
-    }
-
-    fun draw(canvas: Canvas){
-        canvas.run {
-            drawRect(
-                defaultRect(),
-                Paint().apply {
-                    color = rectColor
-                    xfermode = PorterDuffXfermode(PorterDuff.Mode.LIGHTEN)
-                }
-            )
-        }
-    }
-
-    fun getRandomColorValue() = (0 until 255).random().toFloat()
 }
