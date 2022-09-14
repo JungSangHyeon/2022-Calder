@@ -10,6 +10,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.Alignment
@@ -27,20 +28,20 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
-
 class MainActivity : ComponentActivity() {
 
     companion object {
         private const val frameDelay = 16L // 16ms. for 60 FPS
-
         private const val canvasFillRatio = 0.8f
+        private val complexityRange = (1..10)
+        private const val defaultComplexity = 5
     }
 
-    private var canvasSize = mutableStateOf<IntSize?>(null)
-    private var compositionBitmap = mutableStateOf<Bitmap?>(null)
-    private var drawJob: Job? = null
+    private val canvasSize = mutableStateOf<IntSize?>(null)
+    private val compositionBitmap = mutableStateOf<Bitmap?>(null)
 
-    private var complexity = 5
+    private var drawJob: Job? = null
+    private var complexity = defaultComplexity
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -49,68 +50,72 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(canvasSize.value) {
                 canvasSize.value?.let { size ->
                     if (drawJob == null) {
-                        init(size)
+                        initDrawJob(size)
                     }
                 }
             }
 
             Column(
-                modifier = Modifier
-                    .fillMaxSize()
+                modifier = Modifier.fillMaxSize()
             ) {
-                Canvas(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                        .onGloballyPositioned {
-                            canvasSize.value = it.size
-                        }
-                ) {
-                    compositionBitmap.value?.let {
-                        drawImage(
-                            image = it.asImageBitmap(),
-                            topLeft = Offset(
-                                center.x - it.width / 2,
-                                center.y - it.height / 2
-                            )
-                        )
-                    }
-                }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                    modifier = Modifier.fillMaxWidth().padding(16.dp)
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.ic_baseline_refresh_24),
-                        contentDescription = null,
-                        colorFilter = ColorFilter.tint(androidx.compose.ui.graphics.Color.Gray),
-                        modifier = Modifier
-                            .size(100.dp)
-                            .clip(RoundedCornerShape(20))
-                            .clickable { refresh() }
-                            .border(
-                                1.dp,
-                                androidx.compose.ui.graphics.Color.LightGray,
-                                RoundedCornerShape(20)
-                            )
-                            .padding(16.dp)
-                    )
-                }
+                CompositionCanvas()
+                Controller()
             }
-
         }
+    }
+
+    @Composable
+    private fun ColumnScope.CompositionCanvas() = Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .weight(1f)
+            .onGloballyPositioned {
+                canvasSize.value = it.size
+            }
+    ) {
+        compositionBitmap.value?.let {
+            drawImage(
+                image = it.asImageBitmap(),
+                topLeft = Offset(
+                    center.x - it.width / 2,
+                    center.y - it.height / 2
+                )
+            )
+        }
+    }
+
+    @Composable
+    private fun Controller() = Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth().padding(16.dp)
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.ic_baseline_refresh_24),
+            contentDescription = null,
+            colorFilter = ColorFilter.tint(androidx.compose.ui.graphics.Color.Gray),
+            modifier = Modifier
+                .size(100.dp)
+                .clip(RoundedCornerShape(20))
+                .clickable { refresh() }
+                .border(
+                    1.dp,
+                    androidx.compose.ui.graphics.Color.LightGray,
+                    RoundedCornerShape(20)
+                )
+                .padding(16.dp)
+        )
     }
 
     private fun refresh() {
-        complexity = (1..10).random()
+        complexity = complexityRange.random()
         canvasSize.value?.let { size ->
             drawJob?.cancel()
-            init(size)
+            initDrawJob(size)
         }
     }
 
-    private fun init(size: IntSize) {
+    private fun initDrawJob(size: IntSize) {
         val adjustedSize = size.width.coerceAtMost(size.height) * canvasFillRatio
         val bitmapSize = RectF(0f, 0f, adjustedSize, adjustedSize)
 
