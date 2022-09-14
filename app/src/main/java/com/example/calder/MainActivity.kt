@@ -13,6 +13,10 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.unit.IntSize
+import androidx.core.graphics.get
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 
 class MainActivity : ComponentActivity() {
@@ -23,14 +27,22 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val compositionRectArray = (0 .. 4).map { CompositionRect( Rect(0, 0, 1000, 1000)) }
-        val temp = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
-        Canvas(temp).run {
-            compositionRectArray.forEach {
-                it.draw(this)
+        val compositionRectArray = (0 .. 4).map { CompositionRect( RectF(0f, 0f, 1000f, 1000f)) }
+
+        lifecycleScope.launch{
+            while (true){
+                val temp = Bitmap.createBitmap(1000, 1000, Bitmap.Config.ARGB_8888)
+                Canvas(temp).run {
+                    compositionRectArray.forEach {
+                        it.applyTime()
+                        it.draw(this)
+                    }
+                }
+                compositionBitmap.value = temp
+
+                delay(16)
             }
         }
-        compositionBitmap.value = temp
 
         setContent {
             Canvas(
@@ -55,34 +67,43 @@ class MainActivity : ComponentActivity() {
 }
 
 class CompositionRect(
-    parentRect: Rect
+    val parentRect: RectF
 ){
     enum class CompositionRectType{
         TOP, RIGHT, BOTTOM, LEFT
     }
 
-    val compositionRectType = CompositionRectType.values().random()
-
-    val anchorPoint = Point(
-        (0 until parentRect.width()).random(),
-        (0 until parentRect.height()).random(),
+    private val compositionRectType = CompositionRectType.values().random()
+    private val anchorPoint = Point(
+        (0 until parentRect.width().toInt()).random(),
+        (0 until parentRect.height().toInt()).random(),
     )
-
-    var defaultRect = when(compositionRectType){
-        CompositionRectType.TOP -> Rect(0, 0, parentRect.width(), anchorPoint.y)
-        CompositionRectType.RIGHT -> Rect(anchorPoint.x, 0, parentRect.width(), parentRect.height())
-        CompositionRectType.BOTTOM -> Rect(0, anchorPoint.y, parentRect.width(), parentRect.height())
-        CompositionRectType.LEFT -> Rect(0, 0, anchorPoint.x, parentRect.height())
+    private fun defaultRect() = when(compositionRectType){
+        CompositionRectType.TOP -> RectF(0f, 0f, parentRect.width(), anchorPoint.y + animateValue)
+        CompositionRectType.RIGHT -> RectF(anchorPoint.x - animateValue, 0f, parentRect.width(), parentRect.height())
+        CompositionRectType.BOTTOM -> RectF(0f, anchorPoint.y-animateValue, parentRect.width(), parentRect.height())
+        CompositionRectType.LEFT -> RectF(0f, 0f, anchorPoint.x+animateValue, parentRect.height())
     }
-
-    var rectColor = Color.valueOf(
+    private val rectColor = Color.valueOf(
         getRandomColorValue(), getRandomColorValue(), getRandomColorValue()
     ).toArgb()
+
+    private val absolute = (10..50).random()
+    private val animateValueRange = (-absolute .. absolute)
+    private var animateValueDiff = (-10..10).random()/10f
+    private var animateValue = 0f
+
+    fun applyTime() {
+        animateValue += animateValueDiff
+        if(!animateValueRange.contains(animateValue.toInt())){
+            animateValueDiff *= -1
+        }
+    }
 
     fun draw(canvas: Canvas){
         canvas.run {
             drawRect(
-                defaultRect,
+                defaultRect(),
                 Paint().apply {
                     color = rectColor
                     xfermode = PorterDuffXfermode(PorterDuff.Mode.LIGHTEN)
