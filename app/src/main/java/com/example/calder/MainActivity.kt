@@ -30,7 +30,6 @@ import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
-
     companion object {
         private const val frameDelay = 16L // 16ms. for 60 FPS
         private const val canvasFillRatio = 0.8f
